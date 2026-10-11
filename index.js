@@ -95,12 +95,18 @@ app.post('/posts', verifySession, async (req, res) => {
 app.get('/posts', verifySession, async (req, res) => {
     try{
         const currentUserId = req.user.userId;
+        // Optional paging, e.g. /posts?limit=3&offset=6 (no limit returns every post)
+        const limit = Number(req.query.limit) || null;
+        const offset = Number(req.query.offset) || 0;
 
         // Select all post fields from the posts table, and the username field from the users table
         // Join on the id to know which post belongs to which user
         // Only return the public posts or friends-only posts
         // The query will only show friends-only posts of authors who have added you as a friend
         // to see their posts
+        // Order the fetched posts in descending order
+        // Limit the number of fetched posts and offset the fetch range
+        // to start at the unfetched ones
         const result = await pool.query(`
             SELECT p.*, u.username AS username
             FROM posts p
@@ -113,7 +119,9 @@ app.get('/posts', verifySession, async (req, res) => {
                         SELECT user_id FROM friendships WHERE friend_id = $1
                     )
                 )
-        `, [currentUserId]);
+            ORDER BY p.created_at DESC, p.id DESC
+            LIMIT $2 OFFSET $3
+        `, [currentUserId, limit, offset]);
         res.json(result.rows);
     }catch(err){
         console.error(err);
