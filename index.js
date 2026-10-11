@@ -125,7 +125,7 @@ app.get('/users', verifySession, async (req, res) => {
     // Select all users except for the one you log in as
     try{
         const result = await pool.query(`
-            SELECT id, username, email, created_at FROM users
+            SELECT id, username, created_at FROM users
             WHERE id <> $1
         `, [req.user.userId]);
         res.json(result.rows);
@@ -170,7 +170,7 @@ app.get('/friendships', verifySession, async (req, res) => {
         // Only return the people the logged in user is following
         const result = await pool.query(`
             SELECT * FROM friendships
-            WHERE user_id = $1
+            WHERE user_id = $1 OR friend_id = $1
         `, [req.user.userId]);
         res.json(result.rows);
     }catch(err){
@@ -210,7 +210,7 @@ app.delete('/friendships/:id', verifySession, async (req, res) => {
         // Where the friend of a user_id is targeted and deleted
         const result = await pool.query(`
             DELETE FROM friendships
-            WHERE user_id = $1 AND friend_id = $2
+            WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)
             RETURNING *
         `, [req.user.userId, req.params.id]);
         if(result.rows.length === 0){
