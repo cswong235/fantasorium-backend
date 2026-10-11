@@ -102,6 +102,7 @@ test("GET /posts returns a list of posts", async () => {
 
   expect(res.statusCode).toBe(200);
   expect(res.body).toHaveLength(1);
+  expect(pool.query.mock.calls[0][0]).toContain("friend_id = $1 AND status = 'accepted'");
 });
 
 test("GET /users returns other users", async () => {
