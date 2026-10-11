@@ -103,7 +103,7 @@ app.get('/posts', verifySession, async (req, res) => {
         // Join on the id to know which post belongs to which user
         // Only return the public posts or friends-only posts
         // The query will only show friends-only posts of authors who have added you as a friend
-        // to see their posts
+        // to see their posts, once you've accepted their request
         // Order the fetched posts in descending order
         // Limit the number of fetched posts and offset the fetch range
         // to start at the unfetched ones
@@ -116,7 +116,7 @@ app.get('/posts', verifySession, async (req, res) => {
                 OR (
                     p.visibility = 'friends_only'
                     AND p.user_id IN (
-                        SELECT user_id FROM friendships WHERE friend_id = $1
+                        SELECT user_id FROM friendships WHERE friend_id = $1 AND status = 'accepted'
                     )
                 )
             ORDER BY p.created_at DESC, p.id DESC

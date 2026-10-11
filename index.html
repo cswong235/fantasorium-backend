@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fantasorium API</title>
+  <style>
+    body {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 30px 20px;
+      background: #17120d;
+      color: #e6dcc8;
+      font-family: Verdana, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    h1, h2 { color: #d6a940; font-family: Georgia, serif; }
+    h1 { border-bottom: 2px solid #4d3b28; padding-bottom: 8px; }
+    h2 { margin-top: 36px; }
+    code, pre { background: #0f0c08; color: #f0cf72; border-radius: 4px; }
+    code { padding: 1px 5px; }
+    pre { padding: 10px; overflow-x: auto; }
+    .route { background: #261d15; border: 2px solid #4d3b28; border-radius: 4px; padding: 12px 16px; margin: 14px 0; }
+    .route h3 { margin: 0 0 8px; font-family: monospace; font-size: 16px; color: #fff; }
+    .method { display: inline-block; width: 64px; padding: 2px 0; margin-right: 8px; border-radius: 3px; text-align: center; font-size: 13px; color: #fff; }
+    .get { background: #4d7a34; }
+    .post { background: #b8862b; }
+    .patch { background: #5a6f8a; }
+    .delete { background: #9b2a22; }
+    .auth { font-size: 12px; color: #a8977c; }
+    table { border-collapse: collapse; margin: 6px 0; }
+    td, th { border: 1px solid #4d3b28; padding: 4px 10px; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>Fantasorium API</h1>
+  <p>The backend for Fantasorium. All requests and responses use JSON.</p>
+
+  <h2>Authentication</h2>
+  <p>Routes marked <span class="auth">🔒 Requires login</span> need the <code>access_token</code> from <code>/login</code> or <code>/signup</code>, sent as a header:</p>
+  <pre>Authorization: Bearer &lt;access_token&gt;</pre>
+  <p>A missing or invalid token returns <code>401 Unauthorized</code>.</p>
+
+  <h2>General</h2>
+
+  <div class="route">
+    <h3><span class="method get">GET</span>/</h3>
+    <p>This page.</p>
+  </div>
+
+  <div class="route">
+    <h3><span class="method get">GET</span>/health</h3>
+    <p>Checks that the server is running.</p>
+    <pre>{ "status": "ok" }</pre>
+  </div>
+
+  <h2>Accounts</h2>
+
+  <div class="route">
+    <h3><span class="method post">POST</span>/signup</h3>
+    <p>Creates an account and logs it in.</p>
+    <pre>{ "email": "tester@example.com", "password": "password123" }</pre>
+    <p>Returns <code>201</code> with <code>{ user, session }</code>. Returns <code>409</code> if the email is already in use.</p>
+  </div>
+
+  <div class="route">
+    <h3><span class="method post">POST</span>/login</h3>
+    <p>Logs in with an email and password.</p>
+    <pre>{ "email": "tester@example.com", "password": "password123" }</pre>
+    <p>Returns <code>{ session }</code>. Use <code>session.access_token</code> for the routes below. Returns <code>401</code> on wrong details.</p>
+  </div>
+
+  <div class="route">
+    <h3><span class="method get">GET</span>/profile <span class="auth">🔒 Requires login</span></h3>
+    <p>Returns the logged in user.</p>
+    <pre>{ "id": "...", "username": "tester", "created_at": "..." }</pre>
+  </div>
+
+  <div class="route">
+    <h3><span class="method get">GET</span>/users <span class="auth">🔒 Requires login</span></h3>
+    <p>Returns every user except yourself, as an array of <code>{ id, username, created_at }</code>.</p>
+  </div>
+
+  <h2>Posts</h2>
+
+  <div class="route">
+    <h3><span class="method get">GET</span>/posts <span class="auth">🔒 Requires login</span></h3>
+    <p>Returns posts you can see, newest first: all public posts, your own posts, and friends-only posts from people who sent you a friend request that you accepted. Each post includes the author's <code>username</code>.</p>
+    <table>
+      <tr><th>Query</th><th>Description</th></tr>
+      <tr><td><code>limit</code></td><td>Optional. How many posts to return. Leave out to get every post.</td></tr>
+      <tr><td><code>offset</code></td><td>Optional. How many posts to skip. Defaults to 0.</td></tr>
+    </table>
+    <p>Example: <code>/posts?limit=3&amp;offset=3</code> returns the 4th to 6th newest posts.</p>
+  </div>
+
+  <div class="route">
+    <h3><span class="method post">POST</span>/posts <span class="auth">🔒 Requires login</span></h3>
+    <p>Creates a post. <code>content</code> is required, <code>image</code> is optional.</p>
+    <pre>{
+  "title": "My first quest",
+  "content": "Rolled a natural 20!",
+  "visibility": "public",
+  "image": "https://...supabase.co/storage/v1/object/public/post-photos/..."
+}</pre>
+    <p><code>visibility</code> is <code>"public"</code> or <code>"friends_only"</code>. Returns <code>201</code> with <code>{ message, result }</code>.</p>
+  </div>
+
+  <h2>Friendships</h2>
+  <p>A friendship starts as <code>pending</code> when sent, then the receiver changes it to <code>accepted</code> or <code>rejected</code>.</p>
+
+  <div class="route">
+    <h3><span class="method get">GET</span>/friendships <span class="auth">🔒 Requires login</span></h3>
+    <p>Returns every friendship you're part of, whether you sent it or received it.</p>
+    <pre>[{ "id": 1, "user_id": "sender id", "friend_id": "receiver id", "status": "pending", "created_at": "..." }]</pre>
+  </div>
+
+  <div class="route">
+    <h3><span class="method post">POST</span>/friendships <span class="auth">🔒 Requires login</span></h3>
+    <p>Sends a friend request. It's saved with a <code>pending</code> status.</p>
+    <pre>{ "friend_id": "id of the user to friend" }</pre>
+    <p>Returns <code>201</code> with <code>{ message, result }</code>.</p>
+  </div>
+
+  <div class="route">
+    <h3><span class="method patch">PATCH</span>/friendships/:id <span class="auth">🔒 Requires login</span></h3>
+    <p>Accepts or rejects a request sent to you. <code>:id</code> is the <strong>friendship's</strong> id.</p>
+    <pre>{ "status": "accepted" }</pre>
+    <p><code>status</code> must be <code>"accepted"</code> or <code>"rejected"</code>, otherwise <code>400</code>. Returns <code>404</code> if there's no pending request with that id sent to you.</p>
+  </div>
+
+  <div class="route">
+    <h3><span class="method delete">DELETE</span>/friendships/:id <span class="auth">🔒 Requires login</span></h3>
+    <p>Removes a friendship, whoever sent it. <code>:id</code> is the <strong>other user's</strong> id, not the friendship's id.</p>
+    <p>Returns <code>{ message, result }</code>, or <code>404</code> if there's no friendship with that user.</p>
+  </div>
+
+  <h2>Errors</h2>
+  <p>Errors come back as <code>{ "error": "message" }</code>. Unknown routes return <code>404</code> with <code>{ "error": "Route not found" }</code>.</p>
+</body>
+</html>
