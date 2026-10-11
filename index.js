@@ -20,6 +20,11 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname + '/index.html'));
 })
 
+// Check that the server is up
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+});
+
 app.post('/signup', async (req, res) => {
     const { email, password } = req.body;
     const { data, error } = await supabase.auth.signUp({ email, password });
@@ -223,7 +228,13 @@ app.use((req, res) => {
     res.status(404).json({ error: 'Route not found' });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Fantasorium API listening on port ${PORT}`);
-});
+// Only start the server when running "node index.js" directly,
+// not when the tests require this file
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Fantasorium API running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
