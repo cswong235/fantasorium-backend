@@ -136,16 +136,20 @@ test("POST /friendships sends a friend request", async () => {
   expect(res.body.result.status).toBe("pending");
 });
 
-test("GET /friendships returns the user's friendships", async () => {
+test("GET /friendships returns requests the user sent and received", async () => {
   pool.query.mockResolvedValue({
-    rows: [{ id: 1, user_id: USER_ID, friend_id: FRIEND_ID, status: "pending" }],
+    rows: [
+      { id: 1, user_id: USER_ID, friend_id: FRIEND_ID, status: "pending" },
+      { id: 2, user_id: FRIEND_ID, friend_id: USER_ID, status: "pending" },
+    ],
   });
 
   const res = await request(app).get("/friendships").set(AUTH);
-  console.log("10. GET /friendships returns the user's friendships:", res.statusCode, res.body);
+  console.log("10. GET /friendships returns requests the user sent and received:", res.statusCode, res.body);
 
   expect(res.statusCode).toBe(200);
-  expect(res.body[0].friend_id).toBe(FRIEND_ID);
+  expect(res.body).toHaveLength(2);
+  expect(pool.query.mock.calls[0][0]).toContain("OR friend_id = $1");
 });
 
 test("PATCH /friendships/:id accepts a friend request", async () => {
@@ -160,14 +164,27 @@ test("PATCH /friendships/:id accepts a friend request", async () => {
   expect(res.body.result.status).toBe("accepted");
 });
 
-test("DELETE /friendships/:id removes a friend", async () => {
+test("PATCH /friendships/:id rejects a friend request", async () => {
   pool.query.mockResolvedValue({
-    rows: [{ id: 1, user_id: USER_ID, friend_id: FRIEND_ID }],
+    rows: [{ id: 1, user_id: FRIEND_ID, friend_id: USER_ID, status: "rejected" }],
+  });
+
+  const res = await request(app).patch("/friendships/1").set(AUTH).send({ status: "rejected" });
+  console.log("12. PATCH /friendships/:id rejects a friend request:", res.statusCode, res.body);
+
+  expect(res.statusCode).toBe(200);
+  expect(res.body.result.status).toBe("rejected");
+});
+
+test("DELETE /friendships/:id removes a friend whoever sent the request", async () => {
+  pool.query.mockResolvedValue({
+    rows: [{ id: 1, user_id: FRIEND_ID, friend_id: USER_ID }],
   });
 
   const res = await request(app).delete(`/friendships/${FRIEND_ID}`).set(AUTH);
-  console.log("12. DELETE /friendships/:id removes a friend:", res.statusCode, res.body);
+  console.log("13. DELETE /friendships/:id removes a friend whoever sent the request:", res.statusCode, res.body);
 
   expect(res.statusCode).toBe(200);
   expect(res.body.message).toBe("Friend removed successfully");
+  expect(pool.query.mock.calls[0][0]).toContain("OR (user_id = $2 AND friend_id = $1)");
 });
